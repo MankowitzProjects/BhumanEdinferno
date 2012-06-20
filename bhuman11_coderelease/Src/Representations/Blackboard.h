@@ -66,6 +66,7 @@ class RobotPercept;
 class ImageInfo;
 class ImageRequest;
 class NaturalLandmarkPercept;
+class NaturalLandmarkPerceptBrisk;
 
 // Modeling
 class ArmContactModel;
@@ -197,6 +198,7 @@ protected:
   const ImageInfo& theImageInfo;
   const ImageRequest& theImageRequest;
   const NaturalLandmarkPercept& theNaturalLandmarkPercept;
+  const NaturalLandmarkPerceptBrisk& theNaturalLandmarkPerceptBrisk;
 
   // Modeling
   const ArmContactModel& theArmContactModel;

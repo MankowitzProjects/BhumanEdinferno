@@ -64,7 +64,8 @@ Blackboard::Blackboard() :
   theRobotPercept(theRobotPercept),
   theImageInfo(theImageInfo),
   theImageRequest(theImageRequest),
-  theNaturalLandmarkPercept(theNaturalLandmarkPercept),
+  theNaturalLandmarkPercept(theNaturalLandmarkPercept),//My additional percepts
+  theNaturalLandmarkPerceptBrisk(theNaturalLandmarkPerceptBrisk),
 
 // Modeling
   theArmContactModel(theArmContactModel),

@@ -19,17 +19,26 @@ private:
 	/** Declare the natural landmark percept which contains a list of all
 	 * the key points
 	 */
-	const NaturalLandmarkPercept &theNaturalLandmarkPercept;
-
+	//const NaturalLandmarkPercept &theNaturalLandmarkPercept;
+	const NaturalLandmarkPerceptBrisk &theNaturalLandmarkPerceptBrisk;
 public:
 	/** Constructor. */
+//	NaturalLandmarkSensorModel(const SelfLocatorParameter& selfLocatorParameter,
+//			const NaturalLandmarkPercept& naturalLandmarkPercept, const FrameInfo& frameInfo,
+//			const FieldDimensions& fieldDimensions, const CameraMatrix& cameraMatrix,
+//			const PerceptValidityChecker& perceptValidityChecker):
+//				SensorModel(selfLocatorParameter, frameInfo, fieldDimensions, cameraMatrix,
+//						perceptValidityChecker, Observation::NATURAL_LANDMARKS),
+//						theNaturalLandmarkPercept(naturalLandmarkPercept)
+//	{}
+
 	NaturalLandmarkSensorModel(const SelfLocatorParameter& selfLocatorParameter,
-			const NaturalLandmarkPercept& naturalLandmarkPercept, const FrameInfo& frameInfo,
+			const NaturalLandmarkPerceptBrisk& naturalLandmarkPerceptBrisk, const FrameInfo& frameInfo,
 			const FieldDimensions& fieldDimensions, const CameraMatrix& cameraMatrix,
 			const PerceptValidityChecker& perceptValidityChecker):
 				SensorModel(selfLocatorParameter, frameInfo, fieldDimensions, cameraMatrix,
 						perceptValidityChecker, Observation::NATURAL_LANDMARKS),
-						theNaturalLandmarkPercept(naturalLandmarkPercept)
+						theNaturalLandmarkPerceptBrisk(naturalLandmarkPerceptBrisk)
 	{}
 
 	SensorModelResult computeWeightings(const SampleSet<SelfLocatorSample>& samples,
