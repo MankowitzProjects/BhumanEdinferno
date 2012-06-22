@@ -24,7 +24,7 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/GoalPercept.h"
 #include "Representations/Perception/LinePercept.h"
-#include "Representations/Perception/NaturalLandmarkPercept.h"//MC: Natural landmark additional class
+#include "Representations/Perception/NaturalLandmarkPerceptBrisk.h"//MC: Natural landmark additional class
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Modeling/RobotPose.h"
@@ -53,7 +53,7 @@ MODULE(SelfLocator)
   REQUIRES(OwnTeamInfo)
   REQUIRES(LinePercept)
   REQUIRES(GoalPercept)
-  REQUIRES(NaturalLandmarkPercept)//MC: The sensor model needs the natural landmark representation
+  REQUIRES(NaturalLandmarkPerceptBrisk)//MC: The sensor model needs the natural landmark representation
   REQUIRES(BehaviorConfiguration)
   REQUIRES(OdometryData)
   REQUIRES(MotionInfo)
@@ -143,7 +143,7 @@ private:
   * Applies all sensor models to adjust the weightings of the samples
   * @return true, if any new weightings have been computed. false, otherwise.
   */
-  bool applySensorModels();
+  bool applySensorModels(bool includeLandmarks);
 
   /**
   * The method performs the resampling step of particle filter localization.

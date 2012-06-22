@@ -179,7 +179,10 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 	verifyMatches(&imgGray1, keypoints, keypoints2, matches, feature, dataAnalysis);
 
 	//Create a matchedKeypoint
-	NaturalLandmarkPerceptBrisk::MatchedKeypoint mk;
+	MatchedKeypoint mk;
+
+	//Create a matching score variable
+	float matchingScore = 0;
 
 	//Update the keypoints variable. Note keypoints refers to the current image
 	for (size_t ii = 1;ii<=matches.size();ii++)
@@ -190,7 +193,14 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 		mk.keypoint = keypoints[i1];
 		//Add this to the matched keypoint vector
 		naturalLandmarkPerceptBrisk.matchedPoints.push_back(mk);
+
+		//Calculate the matching score to determine if there is a match
+		matchingScore = matchingScore + matches[ii][0].distance;
 	}
+	//Add the matching score to the natural landmark percept. This will be used to determine
+	//if the images sufficiently match
+	naturalLandmarkPerceptBrisk.matchingScore = matchingScore;
+
 }
 
 void NaturalLandmarkPerceptorBrisk::verifyMatches(cv::Mat *imgGray1, vector<cv::KeyPoint> &keypoints, vector<cv::KeyPoint> &keypoints2,	std::vector<std::vector<cv::DMatch> > &matches, FeatureExtraction &feature, DataAnalysis &dataAnalysis){

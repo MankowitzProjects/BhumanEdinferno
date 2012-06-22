@@ -56,6 +56,9 @@ void NaturalLandmarkPerceptor::update(NaturalLandmarkPercept &naturalLandmarkPer
 	imgRGB2 = cvLoadImage(fname2.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
 	//*****************************************************************
 
+	//Image.copyChannel(image, 2);
+	//Image.copyChannel(image, 2);
+
 	//MC: Generate a vector of Interest Points
 	//*****************************************************************
 	IpVec interestPoints1, interestPoints2;

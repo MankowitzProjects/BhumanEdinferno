@@ -11,11 +11,12 @@ void NaturalLandmarkPerceptBrisk::serialize(In *in, Out *out)
   //Sending a vector of matchedkeypoints
   STREAM_REGISTER_BEGIN();
   STREAM(matchedPoints);
+  STREAM(matchingScore);
   STREAM_REGISTER_FINISH();
 
 }
 
-void NaturalLandmarkPerceptBrisk::MatchedKeypoint::serialize(In *in, Out *out)
+void MatchedKeypoint::serialize(In *in, Out *out)
 {
 
   //Sending a matchedkeypoint
