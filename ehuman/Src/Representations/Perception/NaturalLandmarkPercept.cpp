@@ -4,9 +4,9 @@
 * @author Daniel Mankowitz
 */
 
-#include "NaturalLandmarkPerceptBrisk.h"
+#include "NaturalLandmarkPercept.h"
 
-void NaturalLandmarkPerceptBrisk::serialize(In *in, Out *out)
+void NaturalLandmarkPercept::serialize(In *in, Out *out)
 {
   //Sending a vector of matchedkeypoints
   STREAM_REGISTER_BEGIN();
@@ -17,7 +17,7 @@ void NaturalLandmarkPerceptBrisk::serialize(In *in, Out *out)
 
 }
 
-void MatchedKeypointBrisk::serialize(In *in, Out *out)
+void NaturalLandmarkPercept::MatchedKeypoint::serialize(In *in, Out *out)
 {
 
   //Sending a matchedkeypoint

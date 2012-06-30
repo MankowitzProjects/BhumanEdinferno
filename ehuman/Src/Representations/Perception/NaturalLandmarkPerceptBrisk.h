@@ -12,6 +12,22 @@
 #include "Tools/Math/Vector2.h"
 #include <opencv2/opencv.hpp>
 
+
+
+/**
+* @class NaturalLandmarkPercept
+* Description of naturalLandmarkPercepts
+*/
+class NaturalLandmarkPerceptBrisk: public Streamable
+{
+/** Streaming function
+  * @param in  streaming in ...
+  * @param out ... streaming out.
+  */
+private:
+void serialize(In *in, Out *out);
+
+public:
 /**
 * @class MatchedKeypoint
 * Description of a matched Keypoint
@@ -31,28 +47,11 @@ public:
 cv::KeyPoint keypoint;
 //int x = keypoint.x;
 //** The constructor */
-MatchedKeypointBrisk();
+MatchedKeypointBrisk() {}
 
 
 
 };
-
-/**
-* @class NaturalLandmarkPercept
-* Description of naturalLandmarkPercepts
-*/
-class NaturalLandmarkPerceptBrisk: public Streamable
-{
-/** Streaming function
-  * @param in  streaming in ...
-  * @param out ... streaming out.
-  */
-private:
-void serialize(In *in, Out *out);
-
-
-public:
-
 
 /**Store a vector of perceived keypoints here */
 vector <MatchedKeypointBrisk> matchedPoints;

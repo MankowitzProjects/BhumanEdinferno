@@ -17,7 +17,7 @@ void NaturalLandmarkPerceptBrisk::serialize(In *in, Out *out)
 
 }
 
-void MatchedKeypointBrisk::serialize(In *in, Out *out)
+void NaturalLandmarkPerceptBrisk::MatchedKeypointBrisk::serialize(In *in, Out *out)
 {
 
   //Sending a matchedkeypoint

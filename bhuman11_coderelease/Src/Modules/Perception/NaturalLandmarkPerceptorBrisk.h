@@ -12,6 +12,7 @@
 #include "Representations/Configuration/ColorTable64.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/Image.h"
+#include "Representations/Perception/GrayScaleImage.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
@@ -55,8 +56,8 @@ class NaturalLandmarkPerceptorBrisk: public NaturalLandmarkPerceptorBriskBase
 /** The update function for the natural landmark percept containing the keypoint */
 void update (NaturalLandmarkPerceptBrisk &naturalLandmarkPerceptBrisk);
 
-/** Declare a reference to the image provided by the Nao */
-const Image* theImage;
+///** Declare a reference to the image provided by the Nao */
+//const Image* theImage;
 
 public:
 /** The constructor */

@@ -12,22 +12,6 @@
 #include "Tools/Math/Vector2.h"
 #include "Tools/ImageProcessing/ipoint.h"
 
-
-/**
-* @class NaturalLandmarkPercept
-* Description of naturalLandmarkPercepts
-*/
-class NaturalLandmarkPercept: public Streamable
-{
-/** Streaming function
-  * @param in  streaming in ...
-  * @param out ... streaming out.
-  */
-private:
-void serialize(In *in, Out *out);
-
-
-public:
 /**
 * @class MatchedKeypoint
 * Description of a matched Keypoint
@@ -53,10 +37,27 @@ MatchedKeypoint();
 
 };
 
+/**
+* @class NaturalLandmarkPercept
+* Description of naturalLandmarkPercepts
+*/
+class NaturalLandmarkPercept: public Streamable
+{
+/** Streaming function
+  * @param in  streaming in ...
+  * @param out ... streaming out.
+  */
+private:
+void serialize(In *in, Out *out);
+
+
+public:
 /**Store a vector of perceived keypoints here */
 vector <MatchedKeypoint> matchedPoints;
 /**Store the matching score of the image with the test bank image */
 float matchingScore;
+/**Store whether or not a match has been found */
+bool matchFound;
 
 /** The constructor */
 NaturalLandmarkPercept();

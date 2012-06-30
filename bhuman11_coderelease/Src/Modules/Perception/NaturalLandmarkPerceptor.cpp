@@ -1,6 +1,6 @@
 /**
  * @file NaturalLandmarkPerceptor.cpp
- * @author Daniel Mankowitz
+ * @author Daniel Mankowitz //
  */
 #include "opencv/cv.h"
 #include "opencv/highgui.h"
@@ -25,35 +25,78 @@ NaturalLandmarkPerceptor::NaturalLandmarkPerceptor()
 /** The function used to extract features and update the landmarks */
 void NaturalLandmarkPerceptor::update(NaturalLandmarkPercept &naturalLandmarkPercept)
 {
+	//The matching score threshold value
+	int matchScoreThreshold = 20;
+
 	//Get the vector of matched keypoints
 	naturalLandmarkPercept.matchedPoints.clear();
 
 	//Generate a new image and compare it to each of the images in the image bank
 	//The directory where the files are stored TESTING
-	std::string dir = "../brisk/images/PicsMG/Matching_Pics_Right_Overlapping";
-	std::string dir1 = "../brisk/images/PicsMG/Matching_Pics_Right_Overlapping";//PicsOG/Matching_Images_OG_Left
+	std::string dir = "../../Tools/ImageProcessing/imageBank";
+
+
 	//Names of the two image files
 	std::string name1 = "10";
+
 	std::string name2 = "20";
 
 	std::cout<<"Image in directory 1: "<<name1<<", Image in directory 2: "<<name2<<endl;
 
 
-	// names of the two images
+	// names of the images
 	std::string fname1;
-	std::string fname2;
 
-	//Declare the two images
-	IplImage *imgRGB1, *imgRGB2;
+	//The image file read from the Nao converted to GrayScale (Probably too slow)
+	//****************************************************************
+	//Calculate the horizon line
+	Geometry::Line horizon = Geometry::calculateHorizon(theCameraMatrix, theCameraInfo);
+	//Calculate the line at the edge of the image
+	Vector2<> base(theImage.cameraInfo.resolutionWidth/2, 0);
+	Vector2<> direction(0,1);
+	Geometry::Line imageLine(base, direction);
+	//Calculate the intersection of 2 lines
+	Vector2<> intersection(0,0);
+	Geometry::getIntersectionOfLines(horizon,imageLine, intersection);
 
-	//imgRGB1 = (IplImage)theImage;
+	int criticalPoint = 0;
+	//Find the highest point of the horizon line. This removes the need to scan the
+	//entire image for features
+	if(horizon.base.y>intersection.y)
+		criticalPoint = (float)intersection.y;
+	else
+		criticalPoint = (float)horizon.base.y;
+
+	// if no arguments are passed:
+	//Declare the images
+	IplImage *imgGray1, *imgGray2;
 
 	//Read in images
 	//*****************************************************************
 	fname1 =dir + "/"+ name1+".jpg";
-	fname2 = dir1+ "/"+ name2+".jpg";
-	imgRGB1 = cvLoadImage(fname1.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
-	imgRGB2 = cvLoadImage(fname2.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+	imgGray1 = cvLoadImage(fname1.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+	//IplImage* img = cvLoadImage(fname1.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+	//imgGray1 = img(cvRect(0, 0, theImage.cameraInfo.resolutionWidth/2, criticalPoint));
+
+
+	//Convert the current image to grayscale
+	GrayScaleImage grayImage;
+	grayImage.copyChannel(theImage.image, 2);
+	//Create a Mat matrix to store the image data
+	imgGray2=cvCreateImage(cvSize(theImage.cameraInfo.resolutionHeight,theImage.cameraInfo.resolutionWidth/2),IPL_DEPTH_8U,1);
+
+	for (int rr=0;rr<criticalPoint-1; rr++)
+	{
+		for (int cc=0; cc<(theImage.cameraInfo.resolutionWidth/2)-1;cc++)
+		{
+			//cvmSet(imgGray2, rr,cc,(int)theImage.image[rr][cc].y);
+			//imgGray2.at(rr,cc) =  (int)theImage.image[rr][cc].y;
+			CvScalar s;
+			s.val[0] = theImage.image[rr][cc].y;
+			cvSet2D(imgGray2,rr,cc,s);
+		}
+	}
+	//*****************************************************************
 	//*****************************************************************
 
 	//Image.copyChannel(image, 2);
@@ -66,16 +109,16 @@ void NaturalLandmarkPerceptor::update(NaturalLandmarkPercept &naturalLandmarkPer
 
 	// create the OpenSURF detector:
 	//*****************************************************************
-	surfDet(imgRGB1,interestPoints1, 4, 3, 2, 0.00005f);
-	surfDet(imgRGB2,interestPoints2, 4, 3, 2, 0.00005f);
+	surfDet(imgGray1,interestPoints1, 4, 3, 2, 0.00005f);
+	surfDet(imgGray2,interestPoints2, 4, 3, 2, 0.00005f);
 	//*****************************************************************
 
 	// get the OpenSURF descriptors
 	// first image. Computes the descriptor for each of the keypoints.
 	//Outputs a 64 bit vector describing the keypoints.
 	//*****************************************************************
-	surfDes(imgRGB1,interestPoints1, false);
-	surfDes(imgRGB2,interestPoints2, false);
+	surfDes(imgGray1,interestPoints1, false);
+	surfDes(imgGray2,interestPoints2, false);
 	//*****************************************************************
 
 	//OpenSURF matching
@@ -91,10 +134,12 @@ void NaturalLandmarkPerceptor::update(NaturalLandmarkPercept &naturalLandmarkPer
 
 	//Verify that the matches are indeed correct. If they are not, discard them
 	//from the matches
-	verifyMatches(imgRGB1, interestPoints1, interestPoints2, matches);
+	verifyMatches(imgGray1, interestPoints1, interestPoints2, matches);
 
 	//Create a matchedKeypoint
-	NaturalLandmarkPercept::MatchedKeypoint mk;
+	MatchedKeypoint mk;
+	//Matching score
+	float matchingScore = 0;
 
 	//Update the keypoints variable
 	for (size_t ii = 1;ii<=matches.size();ii++)
@@ -103,7 +148,21 @@ void NaturalLandmarkPerceptor::update(NaturalLandmarkPercept &naturalLandmarkPer
 		mk.keypoint = matches[ii].first;
 		//Add this to the matched keypoint vector
 		naturalLandmarkPercept.matchedPoints.push_back(mk);
+
+		//Calculate the matching score to determine if there is a match
+		matchingScore = matchingScore + 1/(matches[ii].first - matches[ii].second);
 	}
+
+
+	//Add the matching score to the natural landmark percept. This will be used to determine
+	//if the images sufficiently match
+	naturalLandmarkPercept.matchingScore = matchingScore;
+
+	//Check whether or not a match has occurred
+	if(matchingScore>matchScoreThreshold)
+		naturalLandmarkPercept.matchFound = true;
+	else
+		naturalLandmarkPercept.matchFound = false;
 }
 
 void NaturalLandmarkPerceptor::verifyMatches(IplImage  *imgRGB1, IpVec &interestPoint1, IpVec &interestPoint2,IpPairVec &matches){

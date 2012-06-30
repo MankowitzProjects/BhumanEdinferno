@@ -29,16 +29,17 @@ private:
 			FACING_RIGHT,
 			FACING_FRONT
 	);
+
 public:
 	/** Constructor. */
-	//	NaturalLandmarkSensorModel(const SelfLocatorParameter& selfLocatorParameter,
-	//			const NaturalLandmarkPercept& naturalLandmarkPercept, const FrameInfo& frameInfo,
-	//			const FieldDimensions& fieldDimensions, const CameraMatrix& cameraMatrix,
-	//			const PerceptValidityChecker& perceptValidityChecker):
-	//				SensorModel(selfLocatorParameter, frameInfo, fieldDimensions, cameraMatrix,
-	//						perceptValidityChecker, Observation::NATURAL_LANDMARKS),
-	//						theNaturalLandmarkPercept(naturalLandmarkPercept)
-	//	{}
+//		NaturalLandmarkSensorModel(const SelfLocatorParameter& selfLocatorParameter,
+//				const NaturalLandmarkPercept& naturalLandmarkPercept, const FrameInfo& frameInfo,
+//				const FieldDimensions& fieldDimensions, const CameraMatrix& cameraMatrix,
+//				const PerceptValidityChecker& perceptValidityChecker):
+//					SensorModel(selfLocatorParameter, frameInfo, fieldDimensions, cameraMatrix,
+//							perceptValidityChecker, Observation::NATURAL_LANDMARKS),
+//							theNaturalLandmarkPercept(naturalLandmarkPercept)
+//		{}
 
 	NaturalLandmarkSensorModel(const SelfLocatorParameter& selfLocatorParameter,
 			const NaturalLandmarkPerceptBrisk& naturalLandmarkPerceptBrisk, const FrameInfo& frameInfo,
@@ -68,6 +69,7 @@ public:
 		HeadDirection headDirection;
 
 		//Determines whether or not a match has been found
+		//bool matchFound = theNaturalLandmarkPercept.matchFound;
 		bool matchFound = theNaturalLandmarkPerceptBrisk.matchFound;
 
 		if (matchFound)

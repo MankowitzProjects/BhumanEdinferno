@@ -1,0 +1,93 @@
+<?lua if not noPrint then ?>
+
+ifneq ($(ComSpec)$(COMSPEC),)
+  PATH := ../../Util/protobuf/win32/bin:crosstool:/bin:/usr/bin:$(PATH)
+  SOLUTIONDIR := .
+else
+  PATH := ../../Util/zbuildgen/Linux/bin:../../Util/protobuf/linux/bin:$(PATH)
+endif
+
+PROTOC := protoc
+
+<?lua end ?>
+<?lua
+
+template = "Templates/Makefile"
+global = {
+  files = { 
+    matchrecursive("../../Src/Modules/*.cpp", "../../Src/Modules/*.h"),
+    matchfiles("../../Src/Platform/*.h"),
+    matchfiles("../../Src/Platform/linux/*.cpp", "../../Src/Platform/linux/*.h"),
+    matchfiles("../../Src/Platform/Win32Linux/*.cpp", "../../Src/Platform/Win32Linux/*.h"),
+    matchrecursive("../../Src/Processes/*.cpp", "../../Src/Processes/*.h"),
+    matchrecursive("../../Src/Representations/*.cpp", "../../Src/Representations/*.h"),
+    matchrecursive("../../Src/Tools/*.cpp", "../../Src/Tools/*.h"),
+    matchrecursive("../../Src/Tools/ImageProcessing/*.cpp", "../../Src/Tools/ImageProcessing/include/*.h"),
+    matchrecursive("../../Src/Tools/ImageProcessing/agast/*.cc", "../../Src/Tools/ImageProcessing/agast/*.h"),
+  },
+  includePaths = { 
+    "../../Src",
+    "../../Util/I2C/include",
+    "../../Util/protobuf/include",
+    "/home/daniel/Desktop/OpenCV-2.2.0/include",
+  },
+  libPaths = { 
+    "../../Util/libjpeg/lib",
+    "../../Util/protobuf/linux/lib",
+    "../../Util/b-script/bin/linux",
+    "/home/daniel/Desktop/OpenCV-2.2.0/lib",
+  },
+  libs = { 
+    "rt", "jpeg-mmx", "protobuf", "pthread", "b-script-geode", "dl", "opencv_core", "opencv_contrib", "opencv_features2d",  "opencv_flann", "opencv_gpu", "opencv_highgui", "opencv_imgproc", "opencv_ml", "opencv_legacy", "opencv_objdetect"    
+  },
+  dependencies = { "../../Util/b-script/bin/linux/libb-script-geode.a"}, 
+  intDir = "$(SolutionDir)/../../Build/Nao/Linux/$(ConfigurationName)",
+  outDir = "$(SolutionDir)/../../Build/Nao/Linux/$(ConfigurationName)",
+  defines = { "LINUX", "TARGET_ROBOT", "__STRICT_ANSI__" },
+  target = "bhuman",
+  buildFlags = "-march=geode -pipe -msse2 -msse4.2 -Wall -Wno-strict-aliasing -Wno-non-virtual-dtor -Wno-deprecated -fsingle-precision-constant -ffast-math",
+  fileFlags = {},
+}
+
+local protoFiles = matchfiles("../../Src/Tools/sslvision/proto/*.proto")
+for i, file in pairs(protoFiles) do
+  local basename = path.getbasename(file)
+  local outname = "$(OutDir)/" .. path.dropextension(basename) .. ".pb.cc"
+  local fileFlag = {
+    file = file,
+    command = "$(PROTOC) -I../../Src/Tools/sslvision/proto --cpp_out=../../Build/Nao/Linux/$(ConfigurationName) " .. file,
+    description = basename .. " (protoc)",
+    target = outname,
+  }
+  table.insert(global.fileFlags, fileFlag)
+  table.insert(global.files, outname)
+end
+
+configs = {
+  {
+    config = "Debug",    
+    defines = { global.defines, "_DEBUG" },
+    buildFlags = global.buildFlags .. " -g",
+    linkFlags = "-rdynamic",
+  }, 
+  {
+    config = "Release",
+    defines = { global.defines, "NDEBUG" },
+    buildFlags = global.buildFlags .. " -fomit-frame-pointer -O2 -fgcse-after-reload -funswitch-loops -finline-functions -Wno-unused-variable",
+    linkFlags = "-s -rdynamic",
+  },
+  {
+    config = "Operate",
+    defines = { global.defines, "NDEBUG", "RELEASE" },
+    buildFlags = global.buildFlags .. " -fomit-frame-pointer -O2 -fgcse-after-reload -funswitch-loops -finline-functions -Wno-unused-variable",
+    linkFlags = "-s -rdynamic",
+  }, 
+  {
+    config = "Develop",
+    defines = { global.defines },
+    buildFlags = global.buildFlags .. " -fomit-frame-pointer -O2 -fgcse-after-reload -funswitch-loops -finline-functions",
+    linkFlags = "-s -rdynamic",
+  },
+}
+
+?>

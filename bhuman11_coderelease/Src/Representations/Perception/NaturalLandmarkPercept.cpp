@@ -12,11 +12,12 @@ void NaturalLandmarkPercept::serialize(In *in, Out *out)
   STREAM_REGISTER_BEGIN();
   STREAM(matchedPoints);
   STREAM(matchingScore);
+  STREAM(matchFound);
   STREAM_REGISTER_FINISH();
 
 }
 
-void NaturalLandmarkPercept::MatchedKeypoint::serialize(In *in, Out *out)
+void MatchedKeypoint::serialize(In *in, Out *out)
 {
 
   //Sending a matchedkeypoint

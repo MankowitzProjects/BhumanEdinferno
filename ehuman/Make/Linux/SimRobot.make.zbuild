@@ -1,0 +1,90 @@
+<?lua
+
+template = "Templates/QtMakefile"
+
+qtMoc = "moc-qt4"
+qtRcc = "rcc"
+
+global = {
+  files = matchrecursive("../../Src/SimRobot/Src/SimRobot/*.cpp", "../../Src/SimRobot/Src/SimRobot/*.h", "../../Src/SimRobot/Src/SimRobot/SimRobot.rc", "../../Src/SimRobot/Src/SimRobot/SimRobot.qrc", "../../Src/SimRobot/Src/SimRobot/Icons/*.png"),
+  excludes = { "../../Src/SimRobot/Src/SimRobot/qtdotnetstyle.cpp", "../../Src/SimRobot/Src/SimRobot/qtdotnetstyle.h" },
+  outDir = "$(SolutionDir)/../../Build/SimRobot/Linux/$(ConfigurationName)",
+  intDir = "$(SolutionDir)/../../Build/SimRobot/Linux/$(ConfigurationName)",
+  defines = { "LINUX", "QT_NO_DEBUG", "QT_SHARED", "QT_GUI_LIB", "QT_CORE_LIB" },
+  buildFlags = "-pipe -msse2 -msse4.2 -Wall -Wno-strict-aliasing -Wno-non-virtual-dtor -Wno-deprecated -Wno-ignored-qualifiers",
+  includePaths = { 
+    "/usr/include/qt4/QtCore",
+    "/usr/include/qt4/QtGui",
+    "/usr/include/qt4",
+    "../../libraries",
+  },
+  libs = { 
+    "rt", "pthread", "QtGui", "QtCore", "QtSvg",
+  },
+  fileFlags = {},
+  copyfiles = {
+    
+  },
+}
+
+configs = {
+  {
+    config = "Debug",
+    defines = { global.defines, "_DEBUG" },
+    buildFlags = global.buildFlags .. " -g",
+    fileFlags = {},
+    copyfiles = {
+      { "../../Build/SimRobotCore2/Linux/Debug/libSimRobotCore2.so", "libSimRobotCore2.so" },
+      { "../../Build/SimRobotEditor/Linux/Debug/libSimRobotEditor.so", "libSimRobotEditor.so" },
+      { "../../Build/SimulatedNao/Linux/Debug/libRoboCup.so", "libRoboCup.so" },
+    },
+  }, 
+  {
+    config = "Release",
+    defines = { global.defines, "NDEBUG" },
+    buildFlags = global.buildFlags .. " -O3 -fomit-frame-pointer",
+    linkFlags = "-s",
+    fileFlags = {},
+    copyfiles = {
+      { "../../Build/SimRobotCore2/Linux/Release/libSimRobotCore2.so", "libSimRobotCore2.so" },
+      { "../../Build/SimRobotEditor/Linux/Release/libSimRobotEditor.so", "libSimRobotEditor.so" },
+      { "../../Build/SimulatedNao/Linux/Release/libRoboCup.so", "libRoboCup.so" },
+    },
+  },
+  {
+    config = "Develop",
+    defines = { global.defines, "NDEBUG" },
+    buildFlags = global.buildFlags .. " -O3 -fomit-frame-pointer",
+    linkFlags = "-s",
+    fileFlags = {},
+    copyfiles = {
+      { "../../Build/SimRobotCore2/Linux/Release/libSimRobotCore2.so", "libSimRobotCore2.so" },
+      { "../../Build/SimRobotEditor/Linux/Release/libSimRobotEditor.so", "libSimRobotEditor.so" },
+      { "../../Build/SimulatedNao/Linux/Develop/libRoboCup.so", "libRoboCup.so" },
+    },
+  },
+}
+
+for _, file in pairs(global.copyfiles) do
+  local fileFlag = {
+    file = file[1],
+    command = "cp \"" .. file[1] .. "\" \"$(OutDir)/" .. file[2] .. "\"",
+    description = file[2] .. " (copy)",
+    target = "$(OutDir)/" .. file[2],
+  }
+  table.insert(global.fileFlags, fileFlag)
+end
+
+for _, config in pairs(configs) do
+  for _, file in pairs(config.copyfiles) do
+    local fileFlag = {
+      file = file[1],
+      command = "cp \"" .. file[1] .. "\" \"$(OutDir)/" .. file[2] .. "\"",
+      description = file[2] .. " (copy)",
+      target = "$(OutDir)/" .. file[2],
+    }
+    table.insert(config.fileFlags, fileFlag)
+  end
+end
+
+?>

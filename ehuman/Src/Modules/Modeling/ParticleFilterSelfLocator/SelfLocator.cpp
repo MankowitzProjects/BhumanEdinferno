@@ -26,7 +26,8 @@
 #include "SensorModels/GoalPostsSensorModel.h"
 #include "SensorModels/LineSensorModel.h"
 #include "SensorModels/CornersSensorModel.h"
-#include "SensorModels/NaturalLandmarkSensorModel.h"
+#include "SensorModels/SharedBallSensorModel.h"
+#include "SensorModels/NaturalLandmarkSensorModel.h" //My addition
 #include <algorithm>
 
 
@@ -52,12 +53,12 @@ sampleTemplateGenerator(theGoalPercept, theLinePercept, theFrameInfo, theFieldDi
 
 void SelfLocator::setNumberOfSamples(const int num)
 {
-	if(samples)
+	if (samples)
 		delete samples;
 	samples = new SampleSet<Sample>(num);
 	sensorModelWeightings.resize(num);
 
-	if(poseCalculator)
+	if (poseCalculator)
 		delete poseCalculator;
 	poseCalculator = new PoseCalculatorParticleHistory< Sample, SampleSet<Sample> >(*samples);
 	poseCalculatorType = POSE_CALCULATOR_PARTICLE_HISTORY;
@@ -67,9 +68,9 @@ SelfLocator::~SelfLocator()
 {
 	delete poseCalculator;
 	delete samples;
-	for(unsigned int i = 0; i < sensorModels.size(); ++i)
+	for (unsigned int i = 0; i < sensorModels.size(); ++i)
 		delete sensorModels[i];
-	if(perceptValidityChecker)
+	if (perceptValidityChecker)
 		delete perceptValidityChecker;
 	delete parameter;
 }
@@ -77,12 +78,19 @@ SelfLocator::~SelfLocator()
 void SelfLocator::init()
 {
 	fieldModel.init(theFieldDimensions, parameter->maxCrossingLength);
-	for(unsigned int i = 0; i < sensorModels.size(); ++i)
+	for (unsigned int i = 0; i < sensorModels.size(); ++i)
 		delete sensorModels[i];
 	sensorModels.clear();
-	if(perceptValidityChecker)
+	if (perceptValidityChecker)
 		delete perceptValidityChecker;
+
+	/*
+	 *  TODO:
+	 * Create a new sensor model for shared ball.
+	 * */
 	perceptValidityChecker = new PerceptValidityChecker(theFieldDimensions);
+	sensorModels.push_back(new SharedBallSensorModel(*parameter,theTeamMateData,
+			theBallModel, theFrameInfo, theFieldDimensions, theCameraMatrix, *perceptValidityChecker));
 	sensorModels.push_back(new GoalPostsSensorModel(*parameter,
 			theGoalPercept, theFrameInfo, theFieldDimensions, theCameraMatrix, *perceptValidityChecker));
 	sensorModels.push_back(new CenterCircleSensorModel(*parameter,
@@ -95,31 +103,43 @@ void SelfLocator::init()
 			fieldModel));
 	//MC: Add the natural landmark sensor model: NOTE check that SelfLocator.h has the
 	//Brisk percept added to its requires!!
-	sensorModels.push_back(new NaturalLandmarkSensorModel(*parameter,
-			theNaturalLandmarkPerceptBrisk,theFrameInfo,
-			theFieldDimensions, theCameraMatrix, *perceptValidityChecker ));
+//	sensorModels.push_back(new NaturalLandmarkSensorModel(*parameter,
+//			theNaturalLandmarkPercept,theFrameInfo,
+//			theFieldDimensions, theCameraMatrix, *perceptValidityChecker ));
+		sensorModels.push_back(new NaturalLandmarkSensorModel(*parameter,
+				theNaturalLandmarkPerceptBrisk,theFrameInfo,
+				theFieldDimensions, theCameraMatrix, *perceptValidityChecker ));
+
 
 
 	setNumberOfSamples(parameter->numberOfSamples);
 	sampleTemplateGenerator.init();
 	vector<Pose2D> poses;
 	vector<Pose2D> standardDeviations;
-	if(parameter->knownStartPose)
+	if (parameter->knownStartPose)
 	{
 		poses.push_back(parameter->startPose);
 		standardDeviations.push_back(parameter->startPoseStandardDeviation);
 	}
-	// If no start position is known, spread samples uniformly across state space
+	else
+	{
+		// If no start position is known, spread samples uniformly across state space
+		// SPREAD AT LINES ***
+		poses.push_back(Pose2D(-pi / 2.0f, (float) theFieldDimensions.xPosOwnGroundline * 0.6 , (float) theFieldDimensions.yPosLeftSideline));
+		poses.push_back(Pose2D(pi / 2.0f, (float) theFieldDimensions.xPosOwnGroundline * 0.6, (float) theFieldDimensions.yPosRightSideline));
+		standardDeviations.push_back(Pose2D(0.2f, 200, 200));
+		standardDeviations.push_back(Pose2D(0.2f, 200, 200));
+	}
 	initSamplesAtGivenPositions(poses, standardDeviations);
 }
 
 void SelfLocator::initSamplesAtGivenPositions(const vector<Pose2D>& poses,
 		const vector< Pose2D >& standardDeviations)
 {
-	for(int i = 0; i < samples->size(); ++i)
+	for (int i = 0; i < samples->size(); ++i)
 	{
 		Sample& sample(samples->at(i));
-		if(poses.size())
+		if (poses.size())
 		{
 			// Select one of the poses from the list:
 			unsigned int index = random((short)poses.size());
@@ -145,17 +165,17 @@ void SelfLocator::initSamplesAtGivenPositions(const vector<Pose2D>& poses,
 	lastOdometry = theOdometryData;
 	poseCalculator->init();
 }
-//This function calls the function pre-execution
+
 void SelfLocator::update(PotentialRobotPose& robotPose)
 {
 	MODIFY("module:SelfLocator:parameter", *parameter);
 
 	// recreate sampleset if number of samples was changed
-	if(parameter->numberOfSamples != samples->size())
+	if (parameter->numberOfSamples != samples->size())
 		init();
 
 	// Maybe pose has already been computed by call to other update function (for clusters)
-	if(lastPoseComputationTimeStamp == theFrameInfo.time)
+	if (lastPoseComputationTimeStamp == theFrameInfo.time)
 	{
 		robotPose = (PotentialRobotPose&)lastComputedPose;
 		return;
@@ -167,14 +187,14 @@ void SelfLocator::update(PotentialRobotPose& robotPose)
 	DEBUG_RESPONSE("module:SelfLocator:templates only", templatesOnly = true;);
 	DEBUG_RESPONSE("module:SelfLocator:odometry only", odometryOnly = true;);
 
-	if(templatesOnly) //debug
+	if (templatesOnly) //debug
 	{
-		if(sampleTemplateGenerator.templatesAvailable())
-			for(int i = 0; i < this->samples->size(); ++i)
+		if (sampleTemplateGenerator.templatesAvailable())
+			for (int i = 0; i < this->samples->size(); ++i)
 				generateTemplate(samples->at(i));
 		poseCalculator->calcPose(robotPose);
 	}
-	else if(odometryOnly) //debug
+	else if (odometryOnly) //debug
 	{
 		robotPose += theOdometryData - lastOdometry;
 		lastOdometry = theOdometryData;
@@ -183,7 +203,7 @@ void SelfLocator::update(PotentialRobotPose& robotPose)
 	{
 		motionUpdate(updatedBySensors);
 		updatedBySensors = applySensorModels(false);
-		if(updatedBySensors)
+		if (updatedBySensors)
 		{
 			adaptWeightings();
 			resampling();
@@ -230,16 +250,16 @@ void SelfLocator::update(RobotPoseHypotheses& robotPoseHypotheses)
 {
 	robotPoseHypotheses.hypotheses.clear();
 	//update only available for two types of pose calculation:
-	if(poseCalculatorType != POSE_CALCULATOR_PARTICLE_HISTORY && poseCalculatorType != POSE_CALCULATOR_K_MEANS_CLUSTERING)
+	if (poseCalculatorType != POSE_CALCULATOR_PARTICLE_HISTORY && poseCalculatorType != POSE_CALCULATOR_K_MEANS_CLUSTERING)
 		return;
 	//sample set needs to have been updated within this frame:
-	if(lastPoseComputationTimeStamp != theFrameInfo.time)
+	if (lastPoseComputationTimeStamp != theFrameInfo.time)
 	{
 		RobotPose dummyPose;
 		update(dummyPose);
 	}
 
-	if(poseCalculatorType == POSE_CALCULATOR_PARTICLE_HISTORY)
+	if (poseCalculatorType == POSE_CALCULATOR_PARTICLE_HISTORY)
 	{
 		//get hypotheses:
 		PoseCalculatorParticleHistory< Sample, SampleSet<Sample> >* poseHistoryCalc
@@ -247,10 +267,10 @@ void SelfLocator::update(RobotPoseHypotheses& robotPoseHypotheses)
 		vector< pair<int, int> > clusters = poseHistoryCalc->getClusters();
 		sort(clusters.begin(), clusters.end(), cmpClusterPairs);
 		const unsigned int MAX_HYPOTHESES = min<unsigned int>(robotPoseHypotheses.MAX_HYPOTHESES, clusters.size());
-		for(unsigned int i = 0; i < MAX_HYPOTHESES; ++i)
+		for (unsigned int i = 0; i < MAX_HYPOTHESES; ++i)
 		{
 			// No mini clusters, please:
-			if(clusters[i].second <= 3)
+			if (clusters[i].second <= 3)
 				break;
 			// Compute average position:
 			RobotPoseHypothesis newHypothesis;
@@ -259,10 +279,10 @@ void SelfLocator::update(RobotPoseHypotheses& robotPoseHypotheses)
 			// Compute variance of position:
 			int varianceX(0);
 			int varianceY(0);
-			for(int j = 0; j < samples->size(); ++j)
+			for (int j = 0; j < samples->size(); ++j)
 			{
 				Sample& s(samples->at(j));
-				if(s.cluster == clusters[i].first)
+				if (s.cluster == clusters[i].first)
 				{
 					varianceX += (s.translation.x - newTrans.x) * (s.translation.x - newTrans.x);
 					varianceY += (s.translation.y - newTrans.y) * (s.translation.y - newTrans.y);
@@ -274,10 +294,10 @@ void SelfLocator::update(RobotPoseHypotheses& robotPoseHypotheses)
 			newHypothesis.positionCovariance[1][1] = static_cast<float>(varianceY);
 			// Compute covariance:
 			int cov_xy(0);
-			for(int j = 0; j < samples->size(); ++j)
+			for (int j = 0; j < samples->size(); ++j)
 			{
 				Sample& s(samples->at(j));
-				if(s.cluster == clusters[i].first)
+				if (s.cluster == clusters[i].first)
 					cov_xy += (s.translation.x - newTrans.x) * (s.translation.y - newTrans.y);
 			}
 			cov_xy /= (clusters[i].second - 1);
@@ -287,16 +307,16 @@ void SelfLocator::update(RobotPoseHypotheses& robotPoseHypotheses)
 		}
 	}
 
-	if(poseCalculatorType == POSE_CALCULATOR_K_MEANS_CLUSTERING)
+	if (poseCalculatorType == POSE_CALCULATOR_K_MEANS_CLUSTERING)
 	{
 		//get hypotheses:
 		PoseCalculatorKMeansClustering< Sample, SampleSet<Sample>, 5, 1000 >* poseKMeansCalc
 		= (PoseCalculatorKMeansClustering< Sample, SampleSet<Sample>, 5, 1000 >*)poseCalculator;
-		for(unsigned int i = 0; i < 5; ++i)
+		for (unsigned int i = 0; i < 5; ++i)
 		{
 			RobotPoseHypothesis newHypothesis;
 			newHypothesis.validity = poseKMeansCalc->getClusterValidity(i);
-			if(newHypothesis.validity > 0)
+			if (newHypothesis.validity > 0)
 			{
 				poseKMeansCalc->getClusterPose(newHypothesis, i);
 				newHypothesis.positionCovariance[0][0] = 0.1f;   //TODO: calculate covariances
@@ -314,7 +334,7 @@ void SelfLocator::preExecution(RobotPose& robotPose)
 	sampleTemplateGenerator.bufferNewPerceptions();
 
 	// Reset all weightings to 1.0f
-	for(int i = 0; i < samples->size(); ++i)
+	for (int i = 0; i < samples->size(); ++i)
 		samples->at(i).weighting = 1.0f;
 
 	DEBUG_RESPONSE("module:SelfLocator:createFieldModel", fieldModel.create(););
@@ -330,10 +350,10 @@ void SelfLocator::preExecution(RobotPose& robotPose)
 	bool reloadPoseCalculator = (newPoseCalculatorType != poseCalculatorType);
 	DEBUG_RESPONSE("module:SelfLocator:reloadPoseCalculator", reloadPoseCalculator = true;);
 
-	if(reloadPoseCalculator)
+	if (reloadPoseCalculator)
 	{
 		delete poseCalculator;
-		switch(newPoseCalculatorType)
+		switch (newPoseCalculatorType)
 		{
 		case POSE_CALCULATOR_2D_BINNING:
 			poseCalculator = new PoseCalculator2DBinning< Sample, SampleSet<Sample>, 10 >
@@ -360,20 +380,19 @@ void SelfLocator::preExecution(RobotPose& robotPose)
 	}
 
 	// if the considerGameState flag is set, reset samples when necessary
-	if(parameter->considerGameState)
+	if (parameter->considerGameState)
 	{
 		// penalty shoot: if game state switched to playing reset samples to start pos
-		if(theGameInfo.secondaryState == STATE2_PENALTYSHOOT)
+		if (theGameInfo.secondaryState == STATE2_PENALTYSHOOT)
 		{
-
-			if((gameInfoGameStateLastFrame == STATE_SET && theGameInfo.state == STATE_PLAYING) ||
+			if (theGameInfo.state == STATE_SET || (gameInfoGameStateLastFrame == STATE_SET && theGameInfo.state == STATE_PLAYING) ||
 					(gameInfoPenaltyLastFrame != PENALTY_NONE && theRobotInfo.penalty == PENALTY_NONE))
 			{
 				vector<Pose2D> poses;
 				vector<Pose2D> stdDevs;
 				//this only works for the penalty shootout, but since there's no
 				//way to detect a penalty shootout from within the game..... =|
-				if(theOwnTeamInfo.teamColour == TEAM_RED)
+				if (theRobotInfo.number > 1)
 				{
 					//striker pose (center of the pitch)
 					poses.push_back(Pose2D(0.0f, 0.0f, 0.0f));
@@ -387,18 +406,17 @@ void SelfLocator::preExecution(RobotPose& robotPose)
 				}
 				initSamplesAtGivenPositions(poses, stdDevs);
 			}
+
 		}
 		// normal game: if penalty is over reset samples to reenter positions
-		else if(theGameInfo.secondaryState == STATE2_NORMAL)
+		else if (theGameInfo.secondaryState == STATE2_NORMAL)
 		{
-			//MC: If there was a penalty in the last frame, and the robot does not
-			//have a penalty any longer, then he has to run the feature detection routine
-			if(gameInfoPenaltyLastFrame != PENALTY_NONE && theRobotInfo.penalty == PENALTY_NONE)
+			if (gameInfoPenaltyLastFrame != PENALTY_NONE && theRobotInfo.penalty == PENALTY_NONE)
 			{
 				vector<Pose2D> poses;
 				vector<Pose2D> stdDevs;
-				poses.push_back(Pose2D(-pi / 2.0f, 0.0f, (float) theFieldDimensions.yPosLeftSideline));
-				poses.push_back(Pose2D(pi / 2.0f, 0.0f, (float) theFieldDimensions.yPosRightSideline));
+				poses.push_back(Pose2D(-pi / 2.0f, (float) theFieldDimensions.xPosOwnPenaltyMark, (float) theFieldDimensions.yPosLeftSideline));
+				poses.push_back(Pose2D(pi / 2.0f, (float) theFieldDimensions.xPosOwnPenaltyMark, (float) theFieldDimensions.yPosRightSideline));
 				stdDevs.push_back(Pose2D(0.2f, 200, 200));
 				stdDevs.push_back(Pose2D(0.2f, 200, 200));
 				initSamplesAtGivenPositions(poses, stdDevs);
@@ -408,6 +426,28 @@ void SelfLocator::preExecution(RobotPose& robotPose)
 				applySensorModels(includeLandmarks);
 				includeLandmarks = false;
 				//**************************************************
+			}
+			else if ( theGameInfo.state == STATE_SET || theGameInfo.state == STATE_INITIAL || (theRobotInfo.number == 1 && theGameInfo.state == STATE_PLAYING))
+			{
+				for (int i = 0; i < samples->size(); ++i)
+				{
+					Sample& sample(samples->at(i));
+					if (theGameInfo.state == STATE_SET && theRobotInfo.number == 1 &&
+							(fabs(sample.translation.x-static_cast<float>(theFieldDimensions.xPosOwnGoalpost)) > 250 || fabs(sample.translation.y) > 100))
+					{
+						sample.translation.x = static_cast<float>(theFieldDimensions.xPosOwnGoalpost);
+						sample.translation.y = 0.0;
+						sample.angle = 0.0;
+					}
+					else if (sample.translation.x > 0)
+					{
+						sample.translation.x *=-1;
+						sample.translation.y *=-1;
+						sample.angle = normalize( sample.angle + pi);
+					}
+
+				}
+
 			}
 		}
 		gameInfoPenaltyLastFrame = theRobotInfo.penalty;
@@ -445,7 +485,7 @@ void SelfLocator::motionUpdate(bool noise)
 	const int transYError = (int) max(transNoise,
 			(float) max(abs(transY * parameter->majorDirTransWeight),
 					abs(transX * parameter->minorDirTransWeight)));
-	for(int i = 0; i < samples->size(); i++)
+	for (int i = 0; i < samples->size(); i++)
 	{
 		Sample& s(samples->at(i));
 
@@ -470,39 +510,41 @@ void SelfLocator::motionUpdate(bool noise)
 
 bool SelfLocator::applySensorModels(bool includeLandmarks)
 {
-	if(!theCameraMatrix.isValid)
+	if (!theCameraMatrix.isValid)
 		return false;
 
 	// collect all observations
 	// goals and the center circle will always be selected
 	selectedObservations.clear();
 
+	//Check for natural landmarks
 	if(!includeLandmarks)
 	{
-		//Iterate over all the goal posts. If a goal post has recently been seen, then add it as an observation
-		for(int i = 0; i < GoalPercept::NUMBER_OF_GOAL_POSTS; ++i)
-			if(theGoalPercept.posts[i].timeWhenLastSeen == theFrameInfo.time)
+
+		for (int i = 0; i < GoalPercept::NUMBER_OF_GOAL_POSTS; ++i)
+			if (theGoalPercept.posts[i].timeWhenLastSeen == theFrameInfo.time)
 				selectedObservations.push_back(SensorModel::Observation(SensorModel::Observation::GOAL_POST, i));
-		if(selectedObservations.empty()) // no known posts
-			for(int i = 0; i < GoalPercept::NUMBER_OF_UNKNOWN_GOAL_POSTS; ++i)
-				if(theGoalPercept.unknownPosts[i].timeWhenLastSeen == theFrameInfo.time)
+		if (selectedObservations.empty()) // no known posts
+			for (int i = 0; i < GoalPercept::NUMBER_OF_UNKNOWN_GOAL_POSTS; ++i)
+				if (theGoalPercept.unknownPosts[i].timeWhenLastSeen == theFrameInfo.time)
 					selectedObservations.push_back(SensorModel::Observation(SensorModel::Observation::GOAL_POST, i + GoalPercept::NUMBER_OF_GOAL_POSTS));
-		if(theLinePercept.circle.found)
+		if (theLinePercept.circle.found)
 			selectedObservations.push_back(SensorModel::Observation(SensorModel::Observation::CENTER_CIRCLE, 0));
 
 		// points and corners are optional
 		observations.clear();
 		lines.clear();
 		int j = 0;
-		for(list<LinePercept::Line>::const_iterator i = theLinePercept.lines.begin();
+		for (list<LinePercept::Line>::const_iterator i = theLinePercept.lines.begin();
 				i != theLinePercept.lines.end(); ++i)
 		{
 			lines.push_back(&*i);
 			observations.push_back(SensorModel::Observation(SensorModel::Observation::POINT, j++));
 			observations.push_back(SensorModel::Observation(SensorModel::Observation::POINT, j++));
 		}
-		for(int i = 0; i < (int) theLinePercept.intersections.size(); ++i)
+		for (int i = 0; i < (int) theLinePercept.intersections.size(); ++i)
 			observations.push_back(SensorModel::Observation(SensorModel::Observation::CORNER, i));
+
 	}
 	else{
 		//TO DO: Add in the observation of whether or not a match occurred with one of the images
@@ -512,67 +554,61 @@ bool SelfLocator::applySensorModels(bool includeLandmarks)
 	}
 
 
-	if(selectedObservations.empty() && observations.empty())
+	if (selectedObservations.empty() && observations.empty())
 		return false;
 
 	// select observations
-	while((int) selectedObservations.size() < parameter->numberOfObservations)
-		if(observations.empty())
+	while ((int) selectedObservations.size() < parameter->numberOfObservations)
+		if (observations.empty())
 			selectedObservations.push_back(selectedObservations[rand() % selectedObservations.size()]);
 		else
 			selectedObservations.push_back(observations[rand() % observations.size()]);
 
-	// apply sensor models. Iterate through the sensor models
+	// apply sensor models
 	bool sensorModelApplied(false);
 	vector<SensorModel*>::iterator sensorModel = sensorModels.begin();
-	for(; sensorModel != sensorModels.end(); ++sensorModel)
+	for (; sensorModel != sensorModels.end(); ++sensorModel)
 	{
+		SensorModel::SensorModelResult result;
 		selectedIndices.clear();
 
-		//For each sensor model, it checks each of the observations
-		//If, for example, the natural landmark observation corresponds to the
-		//natural landmark sensor model, then it computes the weightings for the model.
-		for(vector<SensorModel::Observation>::const_iterator i = selectedObservations.begin(); i != selectedObservations.end(); ++i)
-			if(i->type == (*sensorModel)->type)
-				selectedIndices.push_back(i->index);//Adds all of the observations to the selected indices
+		for (vector<SensorModel::Observation>::const_iterator i = selectedObservations.begin(); i != selectedObservations.end(); ++i)
+			if (i->type == (*sensorModel)->type)
+				selectedIndices.push_back(i->index);
 
-		SensorModel::SensorModelResult result;
-		if(selectedIndices.empty())
+		if (selectedIndices.empty() && (*sensorModel)->type != SensorModel::Observation::SHARED_BALL )
 			result = SensorModel::NO_SENSOR_UPDATE;
-		else //If the selected indices contain values, then a sensor update occurs for EACH sensor model
+		else
 			result = (*sensorModel)->computeWeightings(*samples, selectedIndices, sensorModelWeightings);
-		if(result == SensorModel::FULL_SENSOR_UPDATE)//For a sensor update that updates ALL the particles
+		if (result == SensorModel::FULL_SENSOR_UPDATE)
 		{
-			for(int i = 0; i < samples->size(); ++i)
-			{//Note that the weighting is a multiplication routine
-				//sensorModelWeightings is updated in the computeWeightings routine
+			for (int i = 0; i < samples->size(); ++i)
+			{
 				samples->at(i).weighting *= sensorModelWeightings[static_cast<unsigned int>(i)];
 				sensorModelApplied = true;
 			}
 		}
-		else if(result == SensorModel::PARTIAL_SENSOR_UPDATE)
+		else if (result == SensorModel::PARTIAL_SENSOR_UPDATE)
 		{
 			// Compute average of all valid weightings, use this average for all invalid ones
-			//Invalid weightings get the average of valid weightings
 			float sum(0.0f);
 			int numOfValidSamples(0);
-			for(unsigned int i = 0; i < sensorModelWeightings.size(); ++i)
+			for (unsigned int i = 0; i < sensorModelWeightings.size(); ++i)
 			{
-				if(sensorModelWeightings[i] != -1)
+				if (sensorModelWeightings[i] != -1)
 				{
 					sum += sensorModelWeightings[i];
 					++numOfValidSamples;
 				}
 			}
-			if(numOfValidSamples == 0) //Should not happen, but you never know...
-			{
+			if (numOfValidSamples == 0) //Should not happen, but you never know...
+					{
 				continue;
-			}
-			//calculates the average weighting and assigns this to each invalid sample
+					}
 			const float averageWeighting(sum / numOfValidSamples);
-			for(unsigned int i = 0; i < sensorModelWeightings.size(); ++i)
+			for (unsigned int i = 0; i < sensorModelWeightings.size(); ++i)
 			{
-				if(sensorModelWeightings[i] != -1)
+				if (sensorModelWeightings[i] != -1)
 					samples->at(i).weighting *= sensorModelWeightings[i];
 				else
 					samples->at(i).weighting *= averageWeighting;
@@ -598,10 +634,10 @@ void SelfLocator::resampling()
 
 	// resample:
 	int j(0);
-	for(int i = 0; i < numberOfSamples; ++i)
+	for (int i = 0; i < numberOfSamples; ++i)
 	{
 		currentSum += oldSet[i].weighting + threshold;
-		while(currentSum > nextPos && j < numberOfSamples)
+		while (currentSum > nextPos && j < numberOfSamples)
 		{
 			samples->at(j++) = oldSet[i];
 			nextPos += weightingBetweenTwoDrawnSamples;
@@ -609,16 +645,16 @@ void SelfLocator::resampling()
 	}
 
 	// fill up remaining samples with new poses:
-	if(sampleTemplateGenerator.templatesAvailable())
-		for(; j < numberOfSamples; ++j)
+	if (sampleTemplateGenerator.templatesAvailable())
+		for (; j < numberOfSamples; ++j)
 			generateTemplate(samples->at(j));
-	else if(j) // in rare cases, a sample is missing, so add one (or more...)
-		for(; j < numberOfSamples; ++j)
+	else if (j) // in rare cases, a sample is missing, so add one (or more...)
+		for (; j < numberOfSamples; ++j)
 			samples->at(j) = samples->at(rand() % j);
 	else // resampling was not possible (for unknown reasons), so create a new sample set (fail safe)
 #ifdef NDEBUG
 	{
-		for(int i = 0; i < numberOfSamples; ++i)
+		for (int i = 0; i < numberOfSamples; ++i)
 		{
 			Sample& sample = samples->at(i);
 			Pose2D pose(theFieldDimensions.randomPoseOnField());
@@ -636,15 +672,15 @@ void SelfLocator::adaptWeightings()
 {
 	totalWeighting = 0;
 	int numberOfSamples(samples->size());
-	for(int i = 0; i < numberOfSamples; ++i)
+	for (int i = 0; i < numberOfSamples; ++i)
 		totalWeighting += samples->at(i).weighting;
-	if(totalWeighting == 0)
+	if (totalWeighting == 0)
 	{
 		OUTPUT(idText, text, "Meeeeeeek. Total weighting of all samples in SelfLocator is 0.");
 		return;
 	}
 	const float averageWeighting = totalWeighting / numberOfSamples;
-	if(slowWeighting)
+	if (slowWeighting)
 	{
 		slowWeighting = slowWeighting + parameter->alphaSlow * (averageWeighting - slowWeighting);
 		fastWeighting = fastWeighting + parameter->alphaFast * (averageWeighting - fastWeighting);
@@ -652,7 +688,7 @@ void SelfLocator::adaptWeightings()
 	else
 	{
 		slowWeighting = averageWeighting;
-		if(parameter->knownStartPose)
+		if (parameter->knownStartPose)
 			fastWeighting = averageWeighting;   // Must be done to avoid complete re-init in first cycle
 	}
 	PLOT("module:SelfLocator:averageWeighting", averageWeighting * 1e3);
@@ -662,7 +698,7 @@ void SelfLocator::adaptWeightings()
 
 void SelfLocator::generateTemplate(Sample& sample)
 {
-	if(sampleTemplateGenerator.templatesAvailable())
+	if (sampleTemplateGenerator.templatesAvailable())
 	{
 		const SampleTemplate st = sampleTemplateGenerator.getNewTemplate();
 		sample.translation = Vector2<int>(int(st.translation.x), int(st.translation.y));
@@ -679,7 +715,7 @@ void SelfLocator::drawSamples()
 {
 	const int numberOfSamples(samples->size());
 	const float maxWeighting = 2 * totalWeighting / numberOfSamples;
-	for(int i = 0; i < numberOfSamples; ++i)
+	for (int i = 0; i < numberOfSamples; ++i)
 	{
 		const Sample& s(samples->at(i));
 		const Pose2D pose(s.angle, (float) s.translation.x, (float) s.translation.y);
@@ -689,7 +725,7 @@ void SelfLocator::drawSamples()
 				Vector2<>(-55, -90),
 				Vector2<>(55, -90)
 		};
-		for(int j = 0; j < 4; ++j)
+		for (int j = 0; j < 4; ++j)
 		{
 			bodyPoints[j] = Geometry::rotate(bodyPoints[j], pose.rotation);
 			bodyPoints[j] += pose.translation;
@@ -698,7 +734,7 @@ void SelfLocator::drawSamples()
 		headPos = Geometry::rotate(headPos, pose.rotation);
 		headPos += pose.translation;
 		ColorRGBA color = s.weighting ? ColorRGBA(weighting, weighting, weighting) : ColorRGBA(255, 0, 0);
-		if(s.cluster == poseCalculator->getIndexOfBestCluster())
+		if (s.cluster == poseCalculator->getIndexOfBestCluster())
 			color = ColorRGBA(200, 0, 200);
 		POLYGON("module:SelfLocator:samples", 4, bodyPoints,
 				0, // pen width

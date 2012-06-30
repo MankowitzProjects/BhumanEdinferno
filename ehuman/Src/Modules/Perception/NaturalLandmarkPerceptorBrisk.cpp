@@ -2,8 +2,7 @@
  * @file NaturalLandmarkPerceptorBrisk.cpp
  * @author Daniel Mankowitz
  */
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
+#include <opencv2/opencv.hpp>
 //#include "Tools/ImageProcessing/surflib.h"
 //#include "Tools/ImageProcessing/OSFeatureExtraction.h"
 #include "Tools/ImageProcessing/include/brisk.h"
@@ -152,7 +151,7 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 	//	}
 	//*****************************************************************
 
-	//MC: Generate a vector of keypoints
+	//MC: Generate a vector of keypoints.
 	std::vector<cv::KeyPoint> keypoints, keypoints2;
 
 	//clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &detectors);
@@ -198,7 +197,7 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 	if(hamming)
 		descriptorMatcher->radiusMatch(descriptors2,descriptors,matches,hammingDistance);
 	else{
-		//Messing with the maxdistance value will drastically reduce the number of matches
+		//Messing with the maxdistance value will drastically reduce the number of matches.
 		descriptorMatcher->radiusMatch(descriptors2,descriptors,matches,radius);
 		//descriptorMatcher->knnMatch(descriptors2,descriptors,matches,3);
 	}
@@ -217,7 +216,7 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 	verifyMatches(&imgGray1, keypoints, keypoints2, matches, feature, dataAnalysis);
 
 	//Create a matchedKeypoint
-	MatchedKeypointBrisk mk;
+	NaturalLandmarkPerceptBrisk::MatchedKeypointBrisk mk;
 
 	//Create a matching score variable
 	float matchingScore = 0;
@@ -225,7 +224,7 @@ void NaturalLandmarkPerceptorBrisk::update(NaturalLandmarkPerceptBrisk &naturalL
 	//Update the keypoints variable. Note keypoints refers to the current image
 	for (size_t ii = 1;ii<=matches.size();ii++)
 	{
-		//Corresponds to the current image
+		//Corresponds to the current image.
 		int i1 = matches[ii][0].trainIdx;
 		//Store the match that we desire in the matched keypoint
 		mk.keypoint = keypoints[i1];
@@ -283,7 +282,7 @@ void NaturalLandmarkPerceptorBrisk::verifyMatches(cv::Mat *imgGray1, vector<cv::
 		int matchSize = matches[i].size();
 		bool isTrueMatchFound = false;
 
-		//for(size_t j = 0; j < matches[i].size(); j++ )
+		//for(size_t j = 0; j < matches[i].size(); j++)
 		while(counter<matchSize)
 		{
 

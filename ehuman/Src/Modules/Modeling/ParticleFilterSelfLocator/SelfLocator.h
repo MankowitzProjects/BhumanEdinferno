@@ -24,28 +24,30 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/GoalPercept.h"
 #include "Representations/Perception/LinePercept.h"
+//#include "Representations/Perception/NaturalLandmarkPercept.h"//MC: Natural landmark additional class
 #include "Representations/Perception/NaturalLandmarkPerceptBrisk.h"//MC: Natural landmark additional class
 #include "Representations/MotionControl/HeadMotionRequest.h"//MC: The head motion request class
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/RobotPoseHypotheses.h"
 #include "Tools/RingBuffer.h"
 #include "Tools/Math/GaussianTable.h"
+#include "Representations/Infrastructure/TeamMateData.h"
 #include "SampleTemplateGenerator.h"
 #include "SensorModels/PerceptValidityChecker.h"
 #include "SensorModels/SensorModel.h"
 #include "SensorModels/FieldModel.h"
 #include <vector>
 
+//#include "Representations/Modeling/CombinedWorldModel.h"
+
 
 template <typename Sample, typename SampleContainer>
 class PoseCalculator;
 class SelfLocatorParameter;
 
-//The various representations that this class requires. Note, 
-//it also provides two representations. 
-//Remember, representations are outputs
 MODULE(SelfLocator)
   REQUIRES(FieldDimensions)
   REQUIRES(GameInfo)
@@ -55,11 +57,14 @@ MODULE(SelfLocator)
   REQUIRES(LinePercept)
   REQUIRES(GoalPercept)
   REQUIRES(NaturalLandmarkPerceptBrisk)//MC: The sensor model needs the natural landmark representation
+  //REQUIRES(NaturalLandmarkPercept)//MC: The sensor model needs the natural landmark representation
   REQUIRES(HeadMotionRequest)//MC: Needed to determine the angle of the robot's head
   REQUIRES(BehaviorConfiguration)
   REQUIRES(OdometryData)
   REQUIRES(MotionInfo)
   REQUIRES(CameraMatrix)
+  REQUIRES(BallModel)
+  REQUIRES(TeamMateData)
   PROVIDES_WITH_MODIFY_AND_DRAW(PotentialRobotPose)
   REQUIRES(PotentialRobotPose)
   PROVIDES_WITH_MODIFY_AND_OUTPUT_AND_DRAW(RobotPose)
@@ -145,7 +150,7 @@ private:
   * Applies all sensor models to adjust the weightings of the samples
   * @return true, if any new weightings have been computed. false, otherwise.
   */
-  bool applySensorModels(bool includeLandmarks);
+  bool applySensorModels(bool naturalLandmarks);
 
   /**
   * The method performs the resampling step of particle filter localization.
@@ -171,7 +176,7 @@ private:
 
   /**
   * A method that contains all intialisations that require
-  * representations from the blackboard.
+  * representations from the blackboard
   */
   virtual void init();
 
